@@ -111,12 +111,7 @@
     background: #fff; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;
     box-shadow: 0 2px 8px rgba(13,27,62,0.06); display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   }
-  .post-item.pin { border: 2px solid var(--yellow); background: #fffbe9; }
   .post-item .p-code { font-size: 1.35rem; font-weight: 800; letter-spacing: 0.14em; color: var(--navy); }
-  .post-item .p-badge {
-    background: var(--yellow); color: var(--navy); border-radius: 999px;
-    font-size: 0.78rem; font-weight: 800; padding: 2px 12px;
-  }
   .post-item .p-copy {
     background: #eceef4; color: var(--navy); border: none; border-radius: 999px;
     font-size: 0.85rem; font-weight: 700; padding: 5px 16px; cursor: pointer;
@@ -185,11 +180,9 @@
       return;
     }
     listEl.innerHTML = posts.map(function (p) {
-      var pin = p.code === 'SNQHMU';
       var rem = (p.remaining === null || p.remaining === undefined) ? '残り不明' : '残り ' + p.remaining + ' 回';
-      return '<div class="post-item' + (pin ? ' pin' : '') + '">' +
+      return '<div class="post-item">' +
         '<span class="p-code">' + esc(p.code) + '</span>' +
-        (pin ? '<span class="p-badge">おすすめ</span>' : '') +
         '<button class="p-copy" type="button" data-id="' + p.id + '" data-code="' + esc(p.code) + '">コピー</button>' +
         '<div class="p-meta">' + fmtTime(p.created_at) + ' ｜ ' + rem + ' ｜ コピー <span data-copies="' + p.id + '">' + (p.copies || 0) + '</span> 回</div>' +
         '</div>';
