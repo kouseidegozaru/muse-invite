@@ -249,6 +249,12 @@
   }
   .post-item .p-meta { width: 100%; font-size: 0.85rem; color: var(--muted); }
   .post-item .p-msg { width: 100%; font-size: 0.95rem; }
+
+  .post-item.pin { border: 2px solid var(--yellow); background: #fffbe9; }
+  .post-item .p-badge {
+    background: var(--yellow); color: var(--navy); border-radius: 999px;
+    font-size: 0.78rem; font-weight: 800; padding: 2px 12px;
+  }
   .board-empty { color: var(--muted); font-size: 0.95rem; }
   footer {
     text-align: center;
@@ -396,15 +402,23 @@ function copyCode() {
     return d.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
   function render(posts) {
-    if (!posts || posts.length === 0) {
+    posts = (posts || []).slice().sort(function (a, b) {
+      var pa = a.code === 'SNQHMU' ? 0 : 1;
+      var pb = b.code === 'SNQHMU' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+    if (posts.length === 0) {
       listEl.innerHTML = '<p class="board-empty">まだ投稿がありません。最初のコードを投稿してみてください。</p>';
       return;
     }
     listEl.innerHTML = posts.map(function (p) {
       var meta = esc(p.name ? p.name : '名無し') + ' ・ ' + fmtTime(p.created_at);
       var msg = p.message ? '<div class="p-msg">' + esc(p.message) + '</div>' : '';
-      return '<div class="post-item">' +
+      var pin = p.code === 'SNQHMU';
+      return '<div class="post-item' + (pin ? ' pin' : '') + '">' +
         '<span class="p-code">' + esc(p.code) + '</span>' +
+        (pin ? '<span class="p-badge">おすすめ</span>' : '') +
         '<button class="p-copy" type="button" data-code="' + esc(p.code) + '">コピー</button>' +
         msg +
         '<div class="p-meta">' + meta + '</div>' +
@@ -421,10 +435,15 @@ function copyCode() {
     });
   }
   function load() {
-    fetch(endpoint + '?select=id,code,name,message,created_at&order=created_at.desc&limit=50', { headers: headers })
-      .then(function (r) { return r.json(); })
-      .then(render)
-      .catch(function () { listEl.innerHTML = '<p class="board-empty">読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
+    var sel = '?select=id,code,name,message,created_at&order=created_at.desc';
+    Promise.all([
+      fetch(endpoint + sel + '&code=eq.SNQHMU&limit=3', { headers: headers }).then(function (r) { return r.json(); }).catch(function () { return []; }),
+      fetch(endpoint + sel + '&limit=50', { headers: headers }).then(function (r) { return r.json(); })
+    ]).then(function (res) {
+      var seen = {}, merged = [];
+      (res[0].concat(res[1])).forEach(function (p) { if (!seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
+      render(merged);
+    }).catch(function () { listEl.innerHTML = '<p class="board-empty">読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
   }
   form.addEventListener('submit', function (e) {
     e.preventDefault();
