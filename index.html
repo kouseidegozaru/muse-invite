@@ -74,6 +74,14 @@
         "@type": "Answer",
         "text": "コードを入力したあなたと、招待した私の両方に、10億 Muse トークンがプレゼントされます。"
       }
+    },
+    {
+      "@type": "Question",
+      "name": "自分の招待コードを載せることはできますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "はい。ページ内の「招待コード掲示板」から、あなたの招待コードを投稿して共有できます。"
+      }
     }
   ]
 }
@@ -212,6 +220,36 @@
   }
   summary { font-weight: 700; color: var(--navy); cursor: pointer; }
   details p { margin-top: 8px; }
+
+  .board-form { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(13,27,62,0.06); margin-bottom: 20px; }
+  .board-form label { display: block; font-weight: 700; color: var(--navy); font-size: 0.92rem; margin-bottom: 4px; }
+  .board-form input[type="text"], .board-form textarea {
+    width: 100%; border: 1.5px solid #ccd3e4; border-radius: 8px; padding: 10px 12px;
+    font-size: 1rem; font-family: inherit; margin-bottom: 14px; background: #fbfcfe;
+  }
+  .board-form input[name="code"] { letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; }
+  .board-form .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .post-btn {
+    background: var(--navy); color: var(--yellow); border: none; border-radius: 999px;
+    font-size: 1rem; font-weight: 700; padding: 11px 34px; cursor: pointer;
+  }
+  .post-btn:disabled { opacity: 0.5; cursor: default; }
+  .board-msg { min-height: 1.6em; font-size: 0.92rem; margin-top: 8px; }
+  .board-msg.ok { color: #146c2e; }
+  .board-msg.err { color: #b3261e; }
+  .board-note { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+  .post-item {
+    background: #fff; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(13,27,62,0.06); display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .post-item .p-code { font-size: 1.35rem; font-weight: 800; letter-spacing: 0.14em; color: var(--navy); }
+  .post-item .p-copy {
+    background: #eceef4; color: var(--navy); border: none; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 700; padding: 5px 16px; cursor: pointer;
+  }
+  .post-item .p-meta { width: 100%; font-size: 0.85rem; color: var(--muted); }
+  .post-item .p-msg { width: 100%; font-size: 0.95rem; }
+  .board-empty { color: var(--muted); font-size: 0.95rem; }
   footer {
     text-align: center;
     color: #7a8499;
@@ -283,6 +321,28 @@
       <summary>招待リンクを開いただけではダメですか？</summary>
       <p>リンクを開いただけではコードは適用されません。参加後に、設定の画面でコード <code class="inline">SNQHMU</code> を入力して確定するまでが1セットです。</p>
     </details>
+    <details>
+      <summary>自分の招待コードを載せることはできますか？</summary>
+      <p>はい。下の「招待コード掲示板」から、あなたの招待コードを投稿できます。コードをお持ちの方は、ぜひ共有してください。</p>
+    </details>
+  </section>
+
+  <section aria-labelledby="board">
+    <h2 id="board">招待コード掲示板</h2>
+    <p style="margin-bottom:16px;">Muse の招待コードをみんなで共有する掲示板です。コードをお持ちの方は投稿できます。使う側は、気になるコードをコピーして、参加後48時間以内に設定で入力してください。</p>
+    <form class="board-form" id="board-form" autocomplete="off">
+      <label for="bf-code">招待コード（必須・英数字4〜12文字）</label>
+      <input type="text" id="bf-code" name="code" maxlength="12" placeholder="例: SNQHMU" required>
+      <label for="bf-name">名前（任意）</label>
+      <input type="text" id="bf-name" name="name" maxlength="30" placeholder="名無しでもOK">
+      <label for="bf-message">ひとこと（任意・140文字まで）</label>
+      <textarea id="bf-message" name="message" maxlength="140" rows="2" placeholder="まだ枠に空きがあります、など"></textarea>
+      <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="post-btn" type="submit" id="bf-submit">投稿する</button>
+      <div class="board-msg" id="board-msg" aria-live="polite"></div>
+      <p class="board-note">同じコードは10分に1回まで、全体で1分に5件まで投稿できます。不適切な投稿は予告なく非表示にすることがあります。</p>
+    </form>
+    <div id="board-list"><p class="board-empty">読み込み中…</p></div>
   </section>
 </main>
 
@@ -311,6 +371,113 @@ function copyCode() {
     fallback();
   }
 }
+</script>
+
+<script>
+(function () {
+  var SUPABASE_URL = 'https://czryjpeijgjpwzxoiets.supabase.co';
+  var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6cnlqcGVpamdqcHd6eG9pZXRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMTM1MDUsImV4cCI6MjA5Mzc4OTUwNX0.7cwpeW1evIYlhRHLrmj2bn1I4DHnXBcxLYbY821DncM';
+  var endpoint = SUPABASE_URL + '/rest/v1/invite_posts';
+  var headers = { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Content-Type': 'application/json' };
+  var listEl = document.getElementById('board-list');
+  var form = document.getElementById('board-form');
+  var msgEl = document.getElementById('board-msg');
+  var submitBtn = document.getElementById('bf-submit');
+  var formShownAt = Date.now();
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function render(posts) {
+    if (!posts || posts.length === 0) {
+      listEl.innerHTML = '<p class="board-empty">まだ投稿がありません。最初のコードを投稿してみてください。</p>';
+      return;
+    }
+    listEl.innerHTML = posts.map(function (p) {
+      var meta = esc(p.name ? p.name : '名無し') + ' ・ ' + fmtTime(p.created_at);
+      var msg = p.message ? '<div class="p-msg">' + esc(p.message) + '</div>' : '';
+      return '<div class="post-item">' +
+        '<span class="p-code">' + esc(p.code) + '</span>' +
+        '<button class="p-copy" type="button" data-code="' + esc(p.code) + '">コピー</button>' +
+        msg +
+        '<div class="p-meta">' + meta + '</div>' +
+        '</div>';
+    }).join('');
+    Array.prototype.forEach.call(listEl.querySelectorAll('.p-copy'), function (btn) {
+      btn.addEventListener('click', function () {
+        var code = btn.getAttribute('data-code');
+        function done() { btn.textContent = 'コピーしました'; setTimeout(function () { btn.textContent = 'コピー'; }, 2000); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(done).catch(function () {});
+        }
+      });
+    });
+  }
+  function load() {
+    fetch(endpoint + '?select=id,code,name,message,created_at&order=created_at.desc&limit=50', { headers: headers })
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () { listEl.innerHTML = '<p class="board-empty">読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
+  }
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    msgEl.textContent = '';
+    msgEl.className = 'board-msg';
+    if (form.website.value) { return; }
+    if (Date.now() - formShownAt < 3000) {
+      msgEl.textContent = '少し待ってから投稿してください。';
+      msgEl.className = 'board-msg err';
+      return;
+    }
+    var code = form.code.value.trim().toUpperCase().replace(/\s+/g, '');
+    var name = form.name.value.trim();
+    var message = form.message.value.trim();
+    if (!/^[A-Z0-9]{4,12}$/.test(code)) {
+      msgEl.textContent = '招待コードは英数字4〜12文字で入力してください。';
+      msgEl.className = 'board-msg err';
+      return;
+    }
+    submitBtn.disabled = true;
+    var body = { code: code };
+    if (name) body.name = name;
+    if (message) body.message = message;
+    fetch(endpoint, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+      .then(function (r) {
+        if (r.ok) {
+          msgEl.textContent = '投稿しました。ありがとうございます。';
+          msgEl.className = 'board-msg ok';
+          form.code.value = ''; form.name.value = ''; form.message.value = '';
+          formShownAt = Date.now();
+          load();
+        } else {
+          return r.json().then(function (err) {
+            var m = (err && err.message) || '';
+            if (m.indexOf('duplicate_recent') >= 0) {
+              msgEl.textContent = '同じコードは10分に1回までです。少し時間をおいてください。';
+            } else if (m.indexOf('rate_limited') >= 0) {
+              msgEl.textContent = '投稿が混み合っています。1分ほど待ってからお試しください。';
+            } else {
+              msgEl.textContent = '投稿できませんでした。入力内容を確認してください。';
+            }
+            msgEl.className = 'board-msg err';
+          });
+        }
+      })
+      .catch(function () {
+        msgEl.textContent = '通信に失敗しました。時間をおいて再度お試しください。';
+        msgEl.className = 'board-msg err';
+      })
+      .finally(function () { submitBtn.disabled = false; });
+  });
+  load();
+})();
 </script>
 
 </body>
