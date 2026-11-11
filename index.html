@@ -36,6 +36,7 @@
   "name": "Muse 招待コード掲示板",
   "url": "https://kouseidegozaru.github.io/muse-invite/",
   "inLanguage": "ja",
+  "dateModified": "2026-11-12",
   "description": "パーソナルAIエージェント「Muse」の招待コード掲示板。おすすめコード SNQHMU のほか、誰でも自分の招待コードを投稿・共有できます。参加後48時間以内に設定からコードを入力すると、両方に10億 Muse トークンがプレゼントされます。",
   "about": {
     "@type": "SoftwareApplication",
@@ -44,6 +45,56 @@
     "operatingSystem": "Web, iOS, Android",
     "url": "https://muse.ai/join"
   }
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "inLanguage": "ja",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Muse の招待コードはどこで入力しますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Web版（muse.ai）は「設定 ＞ 一般 ＞ 使用量 ＞ 招待コードを使う（Redeem invite code）」、アプリは「設定 ＞ Redeem token（トークンを引き換える）」から入力します。Muse に参加してから48時間以内に入力してください。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "招待コードの入力欄が見つからないのはなぜですか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "入力欄が表示されるのは Muse に参加してから48時間以内だけです。48時間を過ぎた場合や、すでに別の招待コードで引き換えを確定したアカウントでは、入力欄自体が表示されません。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "招待コードが「無効」と表示されるのはなぜですか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "そのコードがすでに使用上限（回数）に達している可能性があります。招待コードにはアカウントごとに使える回数の上限があります。また、0（ゼロ）と O（オー）の打ち間違いや、コピー時の余分な空白でも無効になることがあるので、掲示板のコピーボタンでそのまま貼り付けるのがおすすめです。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "招待コードを使うと何がもらえますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "参加後48時間以内に設定で招待コードを入力して確定すると、コードを使った人と招待した人の両方に10億 Muse トークンがプレゼントされます。招待リンクを開いただけでは完了せず、設定での入力確定まで終える必要があります。"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "自分の招待コードをこの掲示板に投稿できますか？",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "はい。掲示板のフォームに自分の招待コードと残りの使用可能数を入力すれば、誰でも投稿・共有できます。同じコードは10分に1回まで、全体で1分に5件まで投稿できます。"
+      }
+    }
+  ]
 }
 </script>
 
@@ -118,6 +169,14 @@
   }
   .post-item .p-meta { width: 100%; font-size: 0.85rem; color: var(--muted); }
   .board-empty { color: var(--muted); font-size: 0.95rem; }
+  section + section { margin-top: 48px; }
+  section h3 { font-size: 1.08rem; color: var(--navy); margin: 20px 0 6px; }
+  section p { margin-bottom: 10px; }
+  .steps { background: #fff; border-radius: 12px; padding: 6px 22px 12px; box-shadow: 0 2px 8px rgba(13,27,62,0.06); margin-bottom: 16px; }
+  .steps h3:first-child { margin-top: 14px; }
+  .faq-item { background: #fff; border-radius: 12px; padding: 14px 20px 6px; box-shadow: 0 2px 8px rgba(13,27,62,0.06); margin-bottom: 10px; }
+  .faq-item h3 { margin-top: 2px; }
+  .owner-note { font-size: 0.85rem; color: var(--muted); width: 100%; }
 </style>
 </head>
 <body>
@@ -141,8 +200,57 @@
       <div class="board-msg" id="board-msg" aria-live="polite"></div>
       <p class="board-note">同じコードは10分に1回まで、全体で1分に5件まで投稿できます。不適切な投稿は予告なく非表示にすることがあります。</p>
     </form>
-    <div id="board-list"><p class="board-empty">読み込み中…</p></div>
+    <div id="board-list">
+      <div class="post-item">
+        <span class="p-code">SNQHMU</span>
+        <span class="owner-note">管理人の招待コードです（残り 16 回）。Muse に参加して48時間以内に設定で入力すると、両方に10億 Muse トークンがプレゼントされます。掲示板の読み込みが終わると、コピーボタン付きで表示されます。</span>
+      </div>
+      <p class="board-empty">みんなの投稿を読み込み中…</p>
+    </div>
     <p class="board-note" style="margin-top:14px;">この掲示板は、Muse の招待コードを探している人と、コードを配りたい人をつなぐ場所です。各コードには残りの使用可能数とコピーされた回数を表示しています。残り回数は投稿した人の申告にもとづく目安で、実際には先に使われた分から減っていきます。コードは Muse への参加後48時間以内でないと使えないため、使うときは参加直前・直後にコピーするのがおすすめです。すでに使われたコードや残り0のコードは、使えない場合があります。</p>
+  </section>
+
+  <section aria-labelledby="howto">
+    <h2 id="howto">招待コードの入力方法</h2>
+    <p>招待コードは、Muse に参加したあと<strong>48時間以内</strong>に設定で入力すると、コードを使った人と招待した人の両方に<strong>10億 Muse トークン</strong>がプレゼントされる仕組みです。手順は次の3ステップです。</p>
+    <div class="steps">
+      <h3>ステップ1: Muse に参加する</h3>
+      <p>まず <a href="https://muse.ai/join" rel="noopener">Muse の参加ページ</a> からアカウントを作成します。招待コードの48時間のカウントは、この参加した時点から始まります。</p>
+      <h3>ステップ2: 48時間以内に設定を開く</h3>
+      <p>Web版（muse.ai）は「設定 &gt; 一般 &gt; 使用量 &gt; 招待コードを使う（Redeem invite code）」、アプリは「設定 &gt; Redeem token（トークンを引き換える）」を開きます。</p>
+      <h3>ステップ3: 掲示板のコードを入力して確定する</h3>
+      <p>上の掲示板からコードをコピーして貼り付け、確定します。たとえば管理人のコード <strong>SNQHMU</strong> もそのまま使えます。招待リンクを開いただけでは完了せず、設定で入力を確定するまで終える必要があります。</p>
+    </div>
+    <p>48時間を過ぎると入力欄そのものが表示されなくなり、あとから入力し直すことはできません。「あとでいいや」が一番もったいないパターンなので、参加したらその場で入力するのがおすすめです。入力できるのは1アカウントにつき1回だけで、すでに別のコードで引き換えを確定したアカウントでも入力欄は表示されません。</p>
+  </section>
+
+  <section aria-labelledby="faq">
+    <h2 id="faq">招待コードが使えないとき・よくある質問</h2>
+    <div class="faq-item">
+      <h3>Q. 招待コードの入力欄が見つかりません</h3>
+      <p>入力欄が表示されるのは Muse に参加してから48時間以内だけです。48時間を過ぎた場合や、すでに別の招待コードで引き換えを確定したアカウントでは、入力欄自体が表示されません。利用環境によっては引き換え機能自体が提供されていない場合もあります。</p>
+    </div>
+    <div class="faq-item">
+      <h3>Q. 「無効なコード」と表示されます</h3>
+      <p>そのコードがすでに使用上限に達している可能性があります。招待コードにはアカウントごとに使える回数の上限があり、上限に達したコードは使えません。掲示板で投稿日の新しいコードを試してみてください。また、0（ゼロ）と O（オー）の打ち間違いや、コピー時の余分な空白でも無効になることがあるので、掲示板のコピーボタンでそのまま貼り付けるのが確実です。</p>
+    </div>
+    <div class="faq-item">
+      <h3>Q. コードを使ったのに特典が反映されません</h3>
+      <p>招待リンクを開いただけでは引き換えは完了しません。アプリまたはウェブサイトの設定で、コード入力と確定まで完了しているか確認してください。引き換え結果の画面表示が、成立したかどうかの判断基準になります。</p>
+    </div>
+    <div class="faq-item">
+      <h3>Q. 掲示板の「残り回数」とは何ですか？</h3>
+      <p>そのコードがあと何回使えるかの、投稿した人の申告にもとづく目安です。実際には先に使われた分から減っていくので、表示より残りが少ない場合や、すでに残り0で使えない場合があります。使えたかどうかは、入力した人の結果でしか分かりません。</p>
+    </div>
+    <div class="faq-item">
+      <h3>Q. 自分の招待コードも投稿できますか？</h3>
+      <p>はい。上の掲示板のフォームに自分の招待コードと残りの使用可能数を入力すれば、誰でも投稿・共有できます。コードが使われたことが分かったら、残り回数を更新して投稿し直してもらえると、ほかの方が無駄に試さずに済みます。メールアドレスや電話番号などの個人情報は投稿しないでください。コードの売買や金銭のやり取りを目的とした投稿は禁止です。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="about-muse">
+    <h2 id="about-muse">Muse とは</h2>
+    <p>Muse は Meta のパーソナルAIエージェントです。メールや予定の整理、調べ物、文章の下書きなど、日常の用事をチャットで頼めるサービスで、無料で始められます。招待コードは、その Muse を始める新規ユーザーへの特典の仕組みで、コードを配った側にも使った側にも10億トークンが入るため、掲示板でコードを共有し合う文化が生まれています。このページは、招待コードを探している人と配りたい人をつなぐ非公式の掲示板です（Meta 公式のページではありません）。</p>
   </section>
 </main>
 
@@ -216,7 +324,7 @@
       var seen = {}, merged = [];
       (res[0].concat(res[1])).forEach(function (p) { if (!seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
       render(merged);
-    }).catch(function () { listEl.innerHTML = '<p class="board-empty">読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
+    }).catch(function () { listEl.innerHTML += '<p class="board-empty">みんなの投稿の読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
   }
   form.addEventListener('submit', function (e) {
     e.preventDefault();
