@@ -167,6 +167,10 @@
     background: #eceef4; color: var(--navy); border: none; border-radius: 999px;
     font-size: 0.85rem; font-weight: 700; padding: 5px 16px; cursor: pointer;
   }
+  .post-item .p-undo {
+    background: #fff; color: var(--muted); border: 1.5px solid #ccd3e4; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 700; padding: 4px 14px; cursor: pointer;
+  }
   .post-item .p-meta { width: 100%; font-size: 0.85rem; color: var(--muted); }
   .board-empty { color: var(--muted); font-size: 0.95rem; }
   section + section { margin-top: 48px; }
@@ -271,6 +275,15 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function copiedKey(id) { return 'muse-invite-copied-' + id; }
+  function hasCopied(id) {
+    try { return localStorage.getItem(copiedKey(id)) === '1'; } catch (e) { return false; }
+  }
+  function setCopied(id, v) {
+    try {
+      if (v) { localStorage.setItem(copiedKey(id), '1'); } else { localStorage.removeItem(copiedKey(id)); }
+    } catch (e) {}
+  }
   function fmtTime(iso) {
     var d = new Date(iso);
     if (isNaN(d)) return '';
@@ -292,6 +305,7 @@
       return '<div class="post-item">' +
         '<span class="p-code">' + esc(p.code) + '</span>' +
         '<button class="p-copy" type="button" data-id="' + p.id + '" data-code="' + esc(p.code) + '">コピー</button>' +
+        '<button class="p-undo" type="button" data-undo="' + p.id + '"' + (hasCopied(p.id) ? '' : ' hidden') + '>コピーを取り消す</button>' +
         '<div class="p-meta">' + fmtTime(p.created_at) + ' ｜ ' + rem + ' ｜ コピー <span data-copies="' + p.id + '">' + (p.copies || 0) + '</span> 回</div>' +
         '</div>';
     }).join('');
@@ -302,6 +316,9 @@
         function done() {
           btn.textContent = 'コピーしました';
           setTimeout(function () { btn.textContent = 'コピー'; }, 2000);
+          setCopied(pid, true);
+          var undoBtn = listEl.querySelector('[data-undo="' + pid + '"]');
+          if (undoBtn) undoBtn.hidden = false;
           fetch(SUPABASE_URL + '/rest/v1/rpc/increment_invite_copy', {
             method: 'POST', headers: headers, body: JSON.stringify({ p_id: Number(pid) })
           }).then(function (r) { return r.json(); }).then(function (n) {
@@ -312,6 +329,19 @@
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(code).then(done).catch(function () {});
         }
+      });
+    });
+    Array.prototype.forEach.call(listEl.querySelectorAll('.p-undo'), function (btn) {
+      btn.addEventListener('click', function () {
+        var pid = btn.getAttribute('data-undo');
+        fetch(SUPABASE_URL + '/rest/v1/rpc/decrement_invite_copy', {
+          method: 'POST', headers: headers, body: JSON.stringify({ p_id: Number(pid) })
+        }).then(function (r) { return r.json(); }).then(function (n) {
+          var el = listEl.querySelector('[data-copies="' + pid + '"]');
+          if (el && typeof n === 'number') el.textContent = n;
+          setCopied(pid, false);
+          btn.hidden = true;
+        }).catch(function () {});
       });
     });
   }
