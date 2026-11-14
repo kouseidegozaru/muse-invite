@@ -275,13 +275,19 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  function copiedKey(id) { return 'muse-invite-copied-' + id; }
-  function hasCopied(id) {
-    try { return localStorage.getItem(copiedKey(id)) === '1'; } catch (e) { return false; }
-  }
-  function setCopied(id, v) {
+  function copiedKey(id) { return 'muse-invite-copies-' + id; }
+  function myCopies(id) {
     try {
-      if (v) { localStorage.setItem(copiedKey(id), '1'); } else { localStorage.removeItem(copiedKey(id)); }
+      var n = parseInt(localStorage.getItem(copiedKey(id)), 10);
+      if (!isNaN(n) && n > 0) return n;
+      // 旧形式（コピー済みフラグ）との互換: 残っていれば1回分として数える
+      return localStorage.getItem('muse-invite-copied-' + id) === '1' ? 1 : 0;
+    } catch (e) { return 0; }
+  }
+  function setMyCopies(id, n) {
+    try {
+      localStorage.removeItem('muse-invite-copied-' + id);
+      if (n > 0) { localStorage.setItem(copiedKey(id), String(n)); } else { localStorage.removeItem(copiedKey(id)); }
     } catch (e) {}
   }
   function fmtTime(iso) {
@@ -305,18 +311,20 @@
       return '<div class="post-item">' +
         '<span class="p-code">' + esc(p.code) + '</span>' +
         '<button class="p-copy" type="button" data-id="' + p.id + '" data-code="' + esc(p.code) + '">コピー</button>' +
-        '<button class="p-undo" type="button" data-undo="' + p.id + '"' + (hasCopied(p.id) ? '' : ' hidden') + '>コピーを取り消す</button>' +
+        '<button class="p-undo" type="button" data-undo="' + p.id + '"' + (myCopies(p.id) > 0 ? '' : ' hidden') + '>コピーを取り消す</button>' +
         '<div class="p-meta">' + fmtTime(p.created_at) + ' ｜ ' + rem + ' ｜ コピー <span data-copies="' + p.id + '">' + (p.copies || 0) + '</span> 回</div>' +
         '</div>';
     }).join('');
     Array.prototype.forEach.call(listEl.querySelectorAll('.p-copy'), function (btn) {
       btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        btn.disabled = true;
         var code = btn.getAttribute('data-code');
         var pid = btn.getAttribute('data-id');
         function done() {
           btn.textContent = 'コピーしました';
-          setTimeout(function () { btn.textContent = 'コピー'; }, 2000);
-          setCopied(pid, true);
+          setTimeout(function () { btn.textContent = 'コピー'; btn.disabled = false; }, 2000);
+          setMyCopies(pid, myCopies(pid) + 1);
           var undoBtn = listEl.querySelector('[data-undo="' + pid + '"]');
           if (undoBtn) undoBtn.hidden = false;
           fetch(SUPABASE_URL + '/rest/v1/rpc/increment_invite_copy', {
@@ -327,21 +335,29 @@
           }).catch(function () {});
         }
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(code).then(done).catch(function () {});
+          navigator.clipboard.writeText(code).then(done).catch(function () { btn.disabled = false; });
+        } else {
+          btn.disabled = false;
         }
       });
     });
     Array.prototype.forEach.call(listEl.querySelectorAll('.p-undo'), function (btn) {
       btn.addEventListener('click', function () {
+        if (btn.disabled) return;
         var pid = btn.getAttribute('data-undo');
+        var mine = myCopies(pid);
+        if (mine <= 0) { btn.hidden = true; return; }
+        btn.disabled = true;
+        // 先に手元の状態を更新する（応答を待つ間に二度押しされても二重に減らないように）
+        setMyCopies(pid, mine - 1);
+        if (mine - 1 <= 0) btn.hidden = true;
         fetch(SUPABASE_URL + '/rest/v1/rpc/decrement_invite_copy', {
           method: 'POST', headers: headers, body: JSON.stringify({ p_id: Number(pid) })
         }).then(function (r) { return r.json(); }).then(function (n) {
           var el = listEl.querySelector('[data-copies="' + pid + '"]');
           if (el && typeof n === 'number') el.textContent = n;
-          setCopied(pid, false);
-          btn.hidden = true;
-        }).catch(function () {});
+          btn.disabled = false;
+        }).catch(function () { btn.disabled = false; });
       });
     });
   }
