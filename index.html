@@ -219,7 +219,10 @@
       </div>
       <p class="board-empty">みんなの投稿を読み込み中…</p>
     </div>
-    <p class="board-note" style="margin-top:14px;">この掲示板は、Muse の招待コードを探している人と、コードを配りたい人をつなぐ場所です。各コードには残りの使用可能数とコピーされた回数を表示しています。残り回数は投稿した人の申告にもとづく目安で、実際には先に使われた分から減っていきます。コードは Muse への参加後48時間以内でないと使えないため、使うときは参加直前・直後にコピーするのがおすすめです。すでに使われたコードや残り0のコードは、使えない場合があります。</p>
+    <div id="board-sentinel"></div>
+    <p class="board-note" id="board-more" style="text-align:center; margin-top:8px;"></p>
+    <p class="board-note" style="margin-top:14px;">この掲示板は、Muse の招待コードを探している人と、コードを配りたい人をつなぐ場所です。</p>
+各コードには残りの使用可能数とコピーされた回数を表示しています。残り回数は投稿した人の申告にもとづく目安で、実際には先に使われた分から減っていきます。コードは Muse への参加後48時間以内でないと使えないため、使うときは参加直前・直後にコピーするのがおすすめです。すでに使われたコードや残り0のコードは、使えない場合があります。</p>
   </section>
 
   <section aria-labelledby="howto">
@@ -304,6 +307,54 @@
     if (isNaN(d)) return '';
     return d.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
+  var PAGE_SIZE = 50;
+  var nextOffset = 0;
+  var hasMore = false;
+  var loadingMore = false;
+  var seenIds = {};
+  var moreEl = document.getElementById('board-more');
+  var sentinelEl = document.getElementById('board-sentinel');
+  function postHTML(p) {
+    var rem = (p.remaining === null || p.remaining === undefined) ? '残り不明' : '残り ' + p.remaining + ' 回';
+    return '<div class="post-item">' +
+      '<span class="p-code">' + esc(p.code) + '</span>' +
+      '<button class="p-copy' + (myCopies(p.id) > 0 ? ' is-undo' : '') + '" type="button" data-id="' + p.id + '" data-code="' + esc(p.code) + '">' + (myCopies(p.id) > 0 ? 'コピーを取り消す' : 'コピー') + '</button>' +
+      '<div class="p-meta">' + fmtTime(p.created_at) + ' ｜ ' + rem + ' ｜ コピー <span data-copies="' + p.id + '">' + (p.copies || 0) + '</span> 回</div>' +
+      '</div>';
+  }
+  function appendPosts(rows) {
+    var fresh = [];
+    (rows || []).forEach(function (p) { if (!seenIds[p.id]) { seenIds[p.id] = 1; fresh.push(p); } });
+    if (!fresh.length) return;
+    currentPosts = currentPosts.concat(fresh);
+    listEl.insertAdjacentHTML('beforeend', fresh.map(postHTML).join(''));
+    bindCopyButtons();
+  }
+  function updateMoreMsg() {
+    if (!moreEl) return;
+    if (!currentPosts.length) { moreEl.textContent = ''; return; }
+    moreEl.textContent = hasMore
+      ? '下にスクロールすると続きが読み込まれます（現在 ' + currentPosts.length + ' 件表示）'
+      : '全 ' + currentPosts.length + ' 件を表示しています';
+  }
+  function loadMore() {
+    if (loadingMore || !hasMore) return;
+    loadingMore = true;
+    var sel = '?select=id,code,copies,remaining,created_at&order=created_at.desc';
+    fetch(endpoint + sel + '&limit=' + PAGE_SIZE + '&offset=' + nextOffset, { headers: headers })
+      .then(function (r) { return r.json(); })
+      .then(function (rows) {
+        if (!Array.isArray(rows)) rows = [];
+        nextOffset += rows.length;
+        hasMore = rows.length === PAGE_SIZE;
+        appendPosts(rows);
+        loadingMore = false;
+        updateMoreMsg();
+      }).catch(function () {
+        loadingMore = false;
+        if (moreEl) moreEl.textContent = '続きの読み込みに失敗しました。下にスクロールすると再試行します。';
+      });
+  }
   function render(posts) {
     posts = (posts || []).slice().sort(function (a, b) {
       var pa = a.code === 'SNQHMU' ? 0 : 1;
@@ -312,19 +363,19 @@
       return new Date(b.created_at) - new Date(a.created_at);
     });
     currentPosts = posts;
+    seenIds = {};
+    posts.forEach(function (p) { seenIds[p.id] = 1; });
     if (posts.length === 0) {
       listEl.innerHTML = '<p class="board-empty">まだ投稿がありません。最初のコードを投稿してみてください。</p>';
       return;
     }
-    listEl.innerHTML = posts.map(function (p) {
-      var rem = (p.remaining === null || p.remaining === undefined) ? '残り不明' : '残り ' + p.remaining + ' 回';
-      return '<div class="post-item">' +
-        '<span class="p-code">' + esc(p.code) + '</span>' +
-        '<button class="p-copy' + (myCopies(p.id) > 0 ? ' is-undo' : '') + '" type="button" data-id="' + p.id + '" data-code="' + esc(p.code) + '">' + (myCopies(p.id) > 0 ? 'コピーを取り消す' : 'コピー') + '</button>' +
-        '<div class="p-meta">' + fmtTime(p.created_at) + ' ｜ ' + rem + ' ｜ コピー <span data-copies="' + p.id + '">' + (p.copies || 0) + '</span> 回</div>' +
-        '</div>';
-    }).join('');
+    listEl.innerHTML = posts.map(postHTML).join('');
+    bindCopyButtons();
+  }
+  function bindCopyButtons() {
     Array.prototype.forEach.call(listEl.querySelectorAll('.p-copy'), function (btn) {
+      if (btn._bound) return;
+      btn._bound = true;
       btn.addEventListener('click', function () {
         if (btn.disabled) return;
         var pid = btn.getAttribute('data-id');
@@ -369,14 +420,35 @@
   }
   function load() {
     var sel = '?select=id,code,copies,remaining,created_at&order=created_at.desc';
+    seenIds = {};
+    nextOffset = 0;
+    hasMore = false;
+    loadingMore = false;
+    currentPosts = [];
     Promise.all([
       fetch(endpoint + sel + '&code=eq.SNQHMU&limit=3', { headers: headers }).then(function (r) { return r.json(); }).catch(function () { return []; }),
-      fetch(endpoint + sel + '&limit=50', { headers: headers }).then(function (r) { return r.json(); })
+      fetch(endpoint + sel + '&limit=' + PAGE_SIZE + '&offset=0', { headers: headers }).then(function (r) { return r.json(); })
     ]).then(function (res) {
+      var pageRows = Array.isArray(res[1]) ? res[1] : [];
+      nextOffset = pageRows.length;
+      hasMore = pageRows.length === PAGE_SIZE;
       var seen = {}, merged = [];
-      (res[0].concat(res[1])).forEach(function (p) { if (!seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
+      (res[0].concat(pageRows)).forEach(function (p) { if (!seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
       render(merged);
+      updateMoreMsg();
     }).catch(function () { listEl.innerHTML += '<p class="board-empty">みんなの投稿の読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
+  }
+  if ('IntersectionObserver' in window && sentinelEl) {
+    var io = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) loadMore();
+    }, { rootMargin: '600px 0px' });
+    io.observe(sentinelEl);
+  } else {
+    window.addEventListener('scroll', function () {
+      if (!sentinelEl) return;
+      var r = sentinelEl.getBoundingClientRect();
+      if (r.top < window.innerHeight + 600) loadMore();
+    }, { passive: true });
   }
   var randomBtn = document.getElementById('random-copy-btn');
   var randomMsg = document.getElementById('random-msg');
