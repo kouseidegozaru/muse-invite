@@ -172,6 +172,10 @@
   }
   .post-item .p-meta { width: 100%; font-size: 0.85rem; color: var(--muted); }
   .board-empty { color: var(--muted); font-size: 0.95rem; }
+  .random-box { background: #fff8e1; border: 2px solid var(--yellow); border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; text-align: center; }
+  .random-btn { background: var(--yellow); color: var(--navy); border: none; border-radius: 999px; font-size: 1.05rem; font-weight: 800; padding: 13px 36px; cursor: pointer; box-shadow: 0 2px 8px rgba(13,27,62,0.15); }
+  .random-btn:disabled { opacity: 0.5; cursor: default; }
+  .random-box .board-note { margin-top: 6px; }
   section + section { margin-top: 48px; }
   section h3 { font-size: 1.08rem; color: var(--navy); margin: 20px 0 6px; }
   section p { margin-bottom: 10px; }
@@ -203,6 +207,11 @@
       <div class="board-msg" id="board-msg" aria-live="polite"></div>
       <p class="board-note">同じコードは10分に1回まで、全体で1分に5件まで投稿できます。不適切な投稿は予告なく非表示にすることがあります。</p>
     </form>
+    <div class="random-box">
+      <button class="random-btn" type="button" id="random-copy-btn">ランダムでコードをコピー</button>
+      <div class="board-msg" id="random-msg" aria-live="polite"></div>
+      <p class="board-note">迷ったらこのボタン。掲示板に投稿されたコードの中から、ランダムで1つ選んでコピーします。</p>
+    </div>
     <div id="board-list">
       <div class="post-item">
         <span class="p-code">SNQHMU</span>
@@ -268,6 +277,7 @@
   var msgEl = document.getElementById('board-msg');
   var submitBtn = document.getElementById('bf-submit');
   var formShownAt = Date.now();
+  var currentPosts = [];
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -301,6 +311,7 @@
       if (pa !== pb) return pa - pb;
       return new Date(b.created_at) - new Date(a.created_at);
     });
+    currentPosts = posts;
     if (posts.length === 0) {
       listEl.innerHTML = '<p class="board-empty">まだ投稿がありません。最初のコードを投稿してみてください。</p>';
       return;
@@ -367,6 +378,53 @@
       render(merged);
     }).catch(function () { listEl.innerHTML += '<p class="board-empty">みんなの投稿の読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
   }
+  var randomBtn = document.getElementById('random-copy-btn');
+  var randomMsg = document.getElementById('random-msg');
+  randomBtn.addEventListener('click', function () {
+    if (randomBtn.disabled) return;
+    randomMsg.textContent = '';
+    randomMsg.className = 'board-msg';
+    if (!currentPosts.length) {
+      randomMsg.textContent = '掲示板を読み込み中です。少し待ってから押してください。';
+      randomMsg.className = 'board-msg err';
+      return;
+    }
+    var mine = null;
+    for (var i = 0; i < currentPosts.length; i++) {
+      if (currentPosts[i].code === 'SNQHMU') { mine = currentPosts[i]; break; }
+    }
+    var target;
+    if (mine && Math.random() < 0.25) {
+      // 4回に1回は管理人のコード SNQHMU を選ぶ
+      target = mine;
+    } else {
+      // 残り0回のコードは対象から外す（残り不明・残り1回以上のみ）
+      var pool = currentPosts.filter(function (p) { return p.remaining === null || p.remaining === undefined || p.remaining > 0; });
+      if (!pool.length) pool = currentPosts;
+      target = pool[Math.floor(Math.random() * pool.length)];
+    }
+    if (!(navigator.clipboard && navigator.clipboard.writeText)) {
+      randomMsg.textContent = 'このブラウザでは自動コピーできませんでした。コード: ' + target.code;
+      randomMsg.className = 'board-msg err';
+      return;
+    }
+    randomBtn.disabled = true;
+    navigator.clipboard.writeText(target.code).then(function () {
+      randomMsg.textContent = 'コード「' + target.code + '」をコピーしました。Muse の設定に貼り付けてください。';
+      randomMsg.className = 'board-msg ok';
+      fetch(SUPABASE_URL + '/rest/v1/rpc/increment_invite_copy', {
+        method: 'POST', headers: headers, body: JSON.stringify({ p_id: Number(target.id) })
+      }).then(function (r) { return r.json(); }).then(function (n) {
+        var el = listEl.querySelector('[data-copies="' + target.id + '"]');
+        if (el && typeof n === 'number') el.textContent = n;
+        randomBtn.disabled = false;
+      }).catch(function () { randomBtn.disabled = false; });
+    }).catch(function () {
+      randomMsg.textContent = 'コピーできませんでした。もう一度お試しください。';
+      randomMsg.className = 'board-msg err';
+      randomBtn.disabled = false;
+    });
+  });
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     msgEl.textContent = '';
