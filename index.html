@@ -213,10 +213,6 @@
       <p class="board-note">迷ったらこのボタン。掲示板に投稿されたコードの中から、ランダムで1つ選んでコピーします。</p>
     </div>
     <div id="board-list">
-      <div class="post-item">
-        <span class="p-code">SNQHMU</span>
-        <span class="owner-note">管理人の招待コードです（残り 16 回）。Muse に参加して48時間以内に設定で入力すると、両方に10億 Muse トークンがプレゼントされます。掲示板の読み込みが終わると、コピーボタン付きで表示されます。</span>
-      </div>
       <p class="board-empty">みんなの投稿を読み込み中…</p>
     </div>
     <div id="board-sentinel"></div>
@@ -281,6 +277,7 @@
   var submitBtn = document.getElementById('bf-submit');
   var formShownAt = Date.now();
   var currentPosts = [];
+  var myPost = null;
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -357,9 +354,6 @@
   }
   function render(posts) {
     posts = (posts || []).slice().sort(function (a, b) {
-      var pa = a.code === 'SNQHMU' ? 0 : 1;
-      var pb = b.code === 'SNQHMU' ? 0 : 1;
-      if (pa !== pb) return pa - pb;
       return new Date(b.created_at) - new Date(a.created_at);
     });
     currentPosts = posts;
@@ -429,12 +423,12 @@
       fetch(endpoint + sel + '&code=eq.SNQHMU&limit=3', { headers: headers }).then(function (r) { return r.json(); }).catch(function () { return []; }),
       fetch(endpoint + sel + '&limit=' + PAGE_SIZE + '&offset=0', { headers: headers }).then(function (r) { return r.json(); })
     ]).then(function (res) {
+      // SNQHMU は一覧の先頭固定をやめ、ランダムボタン専用に保持だけする
+      myPost = (Array.isArray(res[0]) && res[0].length) ? res[0][0] : null;
       var pageRows = Array.isArray(res[1]) ? res[1] : [];
       nextOffset = pageRows.length;
       hasMore = pageRows.length === PAGE_SIZE;
-      var seen = {}, merged = [];
-      (res[0].concat(pageRows)).forEach(function (p) { if (!seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
-      render(merged);
+      render(pageRows);
       updateMoreMsg();
     }).catch(function () { listEl.innerHTML += '<p class="board-empty">みんなの投稿の読み込みに失敗しました。時間をおいて再度お試しください。</p>'; });
   }
@@ -461,9 +455,11 @@
       randomMsg.className = 'board-msg err';
       return;
     }
-    var mine = null;
-    for (var i = 0; i < currentPosts.length; i++) {
-      if (currentPosts[i].code === 'SNQHMU') { mine = currentPosts[i]; break; }
+    var mine = myPost;
+    if (!mine) {
+      for (var i = 0; i < currentPosts.length; i++) {
+        if (currentPosts[i].code === 'SNQHMU') { mine = currentPosts[i]; break; }
+      }
     }
     var target;
     if (mine && Math.random() < 0.25) {
